@@ -21,9 +21,9 @@ def load_data():
         # Safely join the dynamic root path with the file name
         path = os.path.join(DATA_PATH, filename)
 
-        # Check file exists (with a helpful printout of exactly where it looked)
+        # Check file exists
         if not os.path.exists(path):
-            raise FileNotFoundError(f"Missing file: I looked exactly here -> {path}")
+            raise FileNotFoundError(f"Missing file: -> {path}")
 
         df = pd.read_csv(path)
 
@@ -35,35 +35,47 @@ def load_data():
 
     return dataframes
 
+def clean_data(df):
+    """
+    Performs deep cleaning: removes duplicates and restricts data to recent seasons.
+    """
+    initial_rows = df.shape[0]
+    
+    df = df.drop_duplicates().copy()
+    if 'date' in df.columns:
+        df['date'] = pd.to_datetime(df['date'])
+        #I kept the data from 2019 onward
+        df = df[df['date'].dt.year >= 2019]
+    
+    # 3. Final index reset
+    df = df.reset_index(drop=True)
+    
+    rows_dropped = initial_rows - df.shape[0]
+    print(f"Deep cleaning complete. Dropped {rows_dropped} dirty/outdated rows. {df.shape[0]} rows remaining.")
+    return df
 
 def validate_games(df):
     """
-    Validate the games dataframe has required columns
-    and no nulls in critical fields.
+    Cleans the games dataset by dropping irrelevant columns and missing scores.
     """
-    required_columns = [
-        'game_id',
-        'home_club_id',
-        'away_club_id',
-        'home_club_goals',
-        'away_club_goals',
-        'date',
-        'season',
-        'competition_id'
+    initial_rows = df.shape[0]
+    initial_cols = df.shape[1]
+    
+    # Columns I think they are irrelevant for this prediction (I might be wrong)
+    columns_to_drop = [
+        'home_club_position', 'away_club_position', 
+        'attendance', 'stadium', 'referee',
+        'home_club_manager_name', 'away_club_manager_name', 
+        'home_club_formation', 'away_club_formation',
+        'home_club_name', 'away_club_name','url', 'aggregate', 'round'
     ]
-
-    missing = [col for col in required_columns if col not in df.columns]
-    if missing:
-        raise ValueError(f"Games table missing columns: {missing}")
-
-    # Drop rows where goals are null — can't create target variable
-    before = len(df)
+    
+    df = df.drop(columns=columns_to_drop, errors='ignore').copy()
     df = df.dropna(subset=['home_club_goals', 'away_club_goals'])
-    after = len(df)
-
-    if before != after:
-        print(f"Dropped {before - after} rows with missing goals")
-
+    
+    print(f"Games Validation: Dropped {len(columns_to_drop)} messy columns.")
+    print(f"Remaining shape: {df.shape[0]} rows, {df.shape[1]} columns")
+    
     return df
 
 
@@ -79,11 +91,11 @@ def create_target(df):
     """
     def get_outcome(row):
         if row['home_club_goals'] > row['away_club_goals']:
-            return 'H'
+            return 1
         elif row['home_club_goals'] < row['away_club_goals']:
-            return 'A'
+            return 2
         else:
-            return 'D'
+            return 0
 
     df['outcome'] = df.apply(get_outcome, axis=1)
     df['date'] = pd.to_datetime(df['date'])
