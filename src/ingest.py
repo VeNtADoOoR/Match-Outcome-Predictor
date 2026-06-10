@@ -27,7 +27,7 @@ def load_data():
 
         df = pd.read_csv(path)
 
-        # Basic validation
+        # Just to be sure :)
         print(f"Loaded {name}: {df.shape[0]} rows, {df.shape[1]} columns")
         print(f"Missing values:\n{df.isnull().sum()[df.isnull().sum() > 0]}\n")
 
@@ -47,24 +47,24 @@ def clean_data(df):
         #I kept the data from 2019 onward
         df = df[df['date'].dt.year >= 2019]
     
-    # 3. Final index reset
+    if 'competition_type' in df.columns:
+        df = df[df['competition_type'] == 'domestic_league']
+        
+    # Final index reset
     df = df.reset_index(drop=True)
     
     rows_dropped = initial_rows - df.shape[0]
-    print(f"Deep cleaning complete. Dropped {rows_dropped} dirty/outdated rows. {df.shape[0]} rows remaining.")
+    print(f"Deep cleaning complete. Dropped {rows_dropped} outdated rows. {df.shape[0]} rows remaining.")
     return df
 
 def validate_games(df):
     """
     Cleans the games dataset by dropping irrelevant columns and missing scores.
     """
-    initial_rows = df.shape[0]
-    initial_cols = df.shape[1]
-    
     # Columns I think they are irrelevant for this prediction (I might be wrong)
     columns_to_drop = [
         'home_club_position', 'away_club_position', 
-        'attendance', 'stadium', 'referee',
+        'attendance', 'stadium', 'referee', 'competition_id',
         'home_club_manager_name', 'away_club_manager_name', 
         'home_club_formation', 'away_club_formation',
         'home_club_name', 'away_club_name','url', 'aggregate', 'round'
