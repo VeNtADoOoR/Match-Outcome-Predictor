@@ -1,8 +1,7 @@
 from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestClassifier
+#from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, classification_report
-import pandas as pd
-
+from xgboost import XGBClassifier
 from ingest import load_data, validate_games, create_target, clean_data
 from features import build_all_features
 
@@ -26,16 +25,28 @@ def prepare_training_data(df):
 
 def train_baseline_model(X_train, y_train):
     """
-    Initializes and trains the Random Forest classifier.
+    (Initializes and trains the Random Forest classifier.) --> old model
+    Now I'll try with the extreme gradient boosting model (aka XGBoost)
     """
     # n_estimators = 100 decision trees voting on the outcome
     # max_depth = 5 prevents the model from over-complicating and memorizing the data
-    model = RandomForestClassifier(n_estimators=100, max_depth=5, random_state=42)
+
+    #Old model --> 48.76% accuracy
+    #model = RandomForestClassifier(n_estimators=100, max_depth=5, random_state=42)
+
+    #New one --> 48.56% accuracy
+    model = XGBClassifier(
+        n_estimators=100, 
+        learning_rate=0.1, 
+        max_depth=4, 
+        random_state=42,
+        eval_metric='mlogloss'
+    )
     model.fit(X_train, y_train)
     
     return model
 
-def evaluate_model(model, X_test, y_test):
+def evaluate_model(model, X_test, y_test):#
     """
     Tests the model on unseen data and prints the final report.
     """
@@ -67,3 +78,4 @@ if __name__ == "__main__":
 
     model = train_baseline_model(X_train, y_train)
     evaluate_model(model, X_test, y_test)
+    
